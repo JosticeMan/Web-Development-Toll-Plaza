@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<!-- Creator: Justin Yau  -->
+<html>
+
+	<head>
+		<title> </title>
+		
+		<style> 
+		
+			table#menu 
+			{
+				width: 100%;
+				height: 200px;
+				text-align: center;
+				font: bold 32px calibri;
+			}
+			
+			td#box
+			{
+				border: solid 5px black;
+			}
+			
+			img
+			{
+				padding: 3px;
+			}
+			
+			img.bimg
+			{
+				width: 300px;
+				height: 150px;
+			}
+			
+			.theFont
+			{
+				font: bold 16pt calibri;
+			}
+			
+			table#tolllanes, table#tolllanes td, table#tolllanes th, table#price, table#price td, table#price th, table#result, table#result td, table#result th
+			{
+				text-align: center;
+				border-collapse: collapse;
+				border: solid 2px black;
+			}
+			
+			table#tolllanes
+			{
+				display: none;
+				float: left;
+				width: 74%;
+			}
+			
+			table#result
+			{
+				display: none;
+			}
+			
+			div#tright
+			{
+				display: none;
+			}
+			
+			div 
+			{
+				text-align: center;
+			}
+			 
+			.tleft
+			{
+				width: 50px;
+				height: 50px;
+			}
+
+			table#price
+			{
+				display: none;
+				float: right;
+			}
+		</style>
+
+		<script src = "javascript/utilities.js"> </script>
+		<script>
+		
+			function initialize() 
+			{
+				createVariables();
+				getElements();
+			}
+			
+			function createVariables()
+			{
+				//Constants
+				LANE_SIZE = 8;
+				
+				SECONDS = .001;
+				MINUTES = SECONDS * 60;
+				FIRST_TIMESHIFT = 300;
+				SECOND_TIMESHIFT = 600;
+				THIRD_TIMESHIFT = 870;
+				FOURTH_TIMESHIFT = 990;
+				FIFTH_TIMESHIFT = 1170;
+				SIXTH_TIMESHIFT = 1320;
+				SEVENTH_TIMESHIFT = 1440;
+				
+				CAR_PRICE = 8;
+				MOTORCYCLE_PRICE = 6;
+				BUS_PRICE = 0;
+				TRUCK_PRICE_PER = 4;
+				
+				//Tracks number of vehicles
+				numOfVehicles = 0;
+				//Tracks each type of vehicle count
+				numCar = numTruck = numMotorcycle = numBuses = 0;
+				//Tracks each type of truck
+				twoTruck = threeTruck = fourTruck = fiveTruck = 0;
+				//Tracks residential, ezpass, and cash customers
+				numResidents = numPass = numCash = 0;
+				//Tracks total amount
+				numTotal = 0;
+				
+				//Tracks time
+				timeElapsed = 0;
+				theRealHour = 12;
+				timeOfDay = " AM";
+				
+				//Keeps a list of all vehicles added
+				theVehicles = [];
+				
+				//Tracks if the simulation is over
+				isOver = false;
+				
+				//Track the lane vehicles
+				ourLanes = [];
+				for(var i = 0; i < LANE_SIZE; i++)
+				{
+					ourLanes[i] = [];
+				}
+			}
+			
+			function getElements()
+			{
+				//Toll Table
+				tollTable = document.getElementById("tolllanes");
+				//Price Table
+				priceTable = document.getElementById("price");
+				//Clock Div
+				theCDiv = document.getElementById("tright");
+				//The Timer
+				theTimers = document.getElementById("theTime");
+				//Lanes (ARRAY)
+				theLanes = document.getElementsByClassName("lanes");
+				//Result Table
+				resultTable = document.getElementById("result");
+				//Result HTML 
+				nVeh = document.getElementById("numOfVeh");
+				ntypeOfVehs = document.getElementById("tVeh");
+				nTruck = document.getElementById("atruck");
+				nResid = document.getElementById("residents");
+				nezPassCustomers = document.getElementById("epasscust");
+				ncashCustomers = document.getElementById("ccust");
+				nTotalAmount = document.getElementById("totalAmount");
+				//Start Button 
+				stButton = document.getElementById("startButton");
+			}
+			
+			function Customer(type, theLane)
+			{
+				var theImage = document.createElement("IMG");
+				theImage.src = "images/" + type + ".png";
+				theImage.style.height = "50px";
+				this.vehicleIMG = theImage;
+				
+				this.type = type;
+				this.lane = theLane;
+				this.ezPass = determinePass(type);
+				this.resident = determineRes(type);
+				this.truckaxle = 0;
+				
+				if(type == "truck")
+				{
+					this.truckaxle = determineAxle();
+				}
+			}
+			
+			function determinePass(inputType)
+			{
+				if(inputType == "bus")
+				{
+					return true;
+				}
+				else
+				{
+					if(inputType == "car" && getRandomNumber(0, 100) < 75)
+					{
+						return true;
+					}
+					else
+					{
+						if(inputType == "motorcycle" && getRandomNumber(0, 100) < 60)
+						{
+							return true;
+						}
+						else
+						{
+							if(inputType = "truck" && getRandomNumber(0, 100) < 50)
+							{
+								return true;
+							}
+							else
+							{
+								return false;
+							}
+						}
+					}
+				}
+			}
+			
+			function determineRes(inputType)
+			{
+				if(inputType == "car" && getRandomNumber(0, 100) < 80)
+				{
+					return true;
+				}
+				else
+				{
+					if(inputType == "motorcycle" && getRandomNumber(0, 100) < 90)
+					{
+						return true;
+					}
+					else
+					{
+						return false;
+					}
+				}
+			}
+			
+			function determineAxle()
+			{
+				if(getRandomNumber(0, 100) < 50)
+				{
+					if(getRandomNumber(0, 100) < 20)
+					{
+						if(getRandomNumber(0, 100) < 10)
+						{
+							return 5;
+						}
+						else
+						{
+							return 4;
+						}
+					}
+					else
+					{
+						return 3;
+					}
+				}
+				else
+				{
+					return 2;
+				}
+			}
+			
+			function runSimulation()
+			{
+				resultTable.style.display = "none";
+				stButton.disabled = true;
+				revealSimulation();
+				sLoop = setInterval(newCustomers, SECONDS);
+				theLoop = setInterval(increaseCount, MINUTES);
+				for(var i = 0; i < LANE_SIZE; i++)
+				{
+					setTimeout(nextLine, SECONDS, i);
+				}
+			}
+			
+			function nextLine(theLaness)
+			{
+				if(!isOver)
+				{
+					if(ourLanes[theLaness].length > 0)
+					{	
+						if(ourLanes[theLaness][0].ezPass)
+						{
+							setTimeout(removeVehicle, 20, theLaness);
+						}
+						else
+						{
+							if(ourLanes[theLaness][0].type == "car" || ourLanes[theLaness][0].type == "motorcycle")
+							{
+								//I ALTERED THE DELAYS
+								var theMilliseconds = getRandomNumber(.000025 * SECONDS, .00005 * SECONDS);
+								setTimeout(removeVehicle, theMilliseconds, theLaness);
+							}
+							else
+							{
+								if(ourLanes[theLaness][0].type == "truck")
+								{
+									//I ALTERED THE DELAYS
+									var theMilliseconds = getRandomNumber(.00005 * SECONDS, .00001 * SECONDS);
+									setTimeout(removeVehicle, theMilliseconds, theLaness);
+								}
+							}
+						}
+					}
+					else
+					{
+						setTimeout(nextLine, SECONDS * 10, theLaness);
+					}
+				}
+			}
+			
+			function runLine(tLane)
+			{
+				nextLine(tLane);
+			}
+			
+			function removeVehicle(tLane)
+			{
+				var theVehicle = ourLanes[tLane][0];
+				var thePrice = 0;
+				//Deals with the prices, ezpass customers, and type of vehicle count
+				if(theVehicle.ezPass)
+				{
+					numPass++;
+					if(theVehicle.resident)
+					{
+						if(theVehicle.type == "car")
+						{
+							numCar++;
+							thePrice = CAR_PRICE * 0.6;
+						}
+						else
+						{
+							if(theVehicle.type == "motorcycle")
+							{
+								numMotorcycle++;
+								thePrice = MOTORCYCLE_PRICE * 0.6;
+							}
+						}
+					}
+					else
+					{
+						if(theVehicle.type == "car")
+						{	
+							numCar++;
+							thePrice = CAR_PRICE * 0.9;
+						}
+						else
+						{
+							if(theVehicle.type == "motorcycle")
+							{
+								numMotorcycle++;
+								thePrice = MOTORCYCLE_PRICE * 0.9;
+							}
+						}
+					}
+					if(theVehicle.type == "truck")
+					{
+						numTruck++;
+						var truckPrice = TRUCK_PRICE_PER * theVehicle.truckaxle;
+						thePrice = truckPrice * 0.8;
+					}
+					if(theVehicle.type == "bus")
+					{
+						numBuses++;
+					}
+				}
+				else
+				{
+					if(theVehicle.type == "truck")
+					{
+						numTruck++;
+						thePrice = TRUCK_PRICE_PER * theVehicle.truckaxle;
+					}
+					else
+					{
+						if(theVehicle.type == "motorcycle")
+						{
+							numMotorcycle++;
+							thePrice = MOTORCYCLE_PRICE;
+						}
+						else
+						{
+							if(theVehicle.type == "car")
+							{	
+								numCar++;
+								thePrice = CAR_PRICE;
+							}
+						}
+					}
+				}
+				numTotal = numTotal + thePrice;
+				//Deals with each type of truck axle count
+				if(theVehicle.type == "truck")
+				{
+					if(theVehicle.truckaxle == 2)
+					{
+						twoTruck++;
+					}
+					else
+					{
+						if(theVehicle.truckaxle == 3)
+						{
+							threeTruck++;
+						}
+						else
+						{
+							if(theVehicle.truckaxle == 4)
+							{
+								fourTruck++;
+							}
+							else
+							{
+								if(theVehicle.truckaxle == 5)
+								{
+									fiveTruck++;
+								}
+							}
+						}
+					}
+				}
+				//Deal with resident count
+				if(theVehicle.resident)
+				{
+					numResidents++;
+				}
+				numOfVehicles++;
+				//Deal with cash count
+				numCash++;
+				//Removes the vehicle from the line
+				ourLanes[tLane].shift();
+				//Starts serving the next person in line
+				nextLine(tLane);
+			}
+			
+			function increaseCount()
+			{
+				timeElapsed++;
+				if(timeElapsed == SEVENTH_TIMESHIFT)
+				{	
+					isOver = true;
+					clearTimeout(theLoop);
+					clearTimeout(sLoop);
+					revealResult();
+					timeElapsed = 0;
+					stButton.disabled = false;
+					//Tracks number of vehicles
+					numOfVehicles = 0;
+					//Tracks each type of vehicle count
+					numCar = numTruck = numMotorcycle = numBuses = 0;
+					//Tracks each type of truck
+					twoTruck = threeTruck = fourTruck = fiveTruck = 0;
+					//Tracks residential, ezpass, and cash customers
+					numResidents = numPass = numCash = 0;
+					//Tracks total amount
+					numTotal = 0;
+					
+					//Tracks time
+					timeElapsed = 0;
+					theRealHour = 12;
+					timeOfDay = " AM";
+					
+					//Keeps a list of all vehicles added
+					theVehicles = [];
+					
+					//Tracks if the simulation is over
+					isOver = false;
+				}
+				updateTime();
+			}
+			
+			function newCustomers()
+			{
+				for(var i = 0; i < determineAmount(); i++)
+				{
+					var randomLane = getRandomNumber(0,7);
+					ourLanes[randomLane].push(new Customer(determineCustomer(), randomLane));
+				}
+				display();
+			}
+			//
+			function determineCustomer()
+			{
+				var theNumber = getRandomNumber(0, 100);
+				//First Time
+				if(timeElapsed < FIRST_TIMESHIFT)
+				{
+					if(theNumber < 30)
+					{
+						return "car";
+					}
+					else
+					{
+						if(30 <= theNumber && theNumber < 95)
+						{
+							return "truck";
+						}
+						else
+						{
+							if(95 <= theNumber && theNumber <= 100)
+							{
+								return "motorcycle";
+							}
+							else
+							{
+								return "bus";
+							}
+						}
+					}
+				}
+				else
+				{
+					//Second Time
+					if(timeElapsed < SECOND_TIMESHIFT)
+					{
+						if(theNumber < 50)
+						{
+							return "car";
+						}
+						else
+						{
+							if(50 <= theNumber && theNumber < 75)
+							{
+								return "truck";
+							}
+							else
+							{
+								if(75 <= theNumber && theNumber < 80)
+								{
+									return "motorcycle";
+								}
+								else
+								{
+									return "bus";
+								}
+							}
+						}
+					}
+					else
+					{
+						//Third Time
+						if(timeElapsed < THIRD_TIMESHIFT)
+						{
+							if(theNumber < 40)
+							{
+								return "car";
+							}
+							else
+							{
+								if(40 <= theNumber && theNumber < 80)
+								{
+									return "truck";
+								}
+								else
+								{
+									if(80 <= theNumber && theNumber < 90)
+									{
+										return "motorcycle";
+									}
+									else
+									{
+										return "bus";
+									}
+								}
+							}
+						}
+						else
+						{
+							//Fourth Time
+							if(timeElapsed < FOURTH_TIMESHIFT)
+							{
+								if(theNumber < 45)
+								{
+									return "car";
+								}
+								else
+								{
+									if(45 <= theNumber && theNumber < 75)
+									{
+										return "truck";
+									}
+									else
+									{
+										if(75 <= theNumber && theNumber < 85)
+										{
+											return "motorcycle";
+										}
+										else
+										{
+											return "bus";
+										}
+									}
+								}
+							}
+							else
+							{
+								//Fifth Time
+								if(timeElapsed < FIFTH_TIMESHIFT)
+								{
+									if(theNumber < 60)
+									{
+										return "car";
+									}
+									else
+									{
+										if(60 <= theNumber && theNumber < 75)
+										{
+											return "truck";
+										}
+										else
+										{
+											if(75 <= theNumber && theNumber < 80)
+											{
+												return "motorcycle";
+											}
+											else
+											{
+												return "bus";
+											}
+										}
+									}
+								}
+								else
+								{
+									//Sixth Time
+									if(timeElapsed < SIXTH_TIMESHIFT)
+									{
+										if(theNumber < 60)
+										{
+											return "car";
+										}
+										else
+										{
+											if(60 <= theNumber && theNumber < 85)
+											{
+												return "truck";
+											}
+											else
+											{
+												if(85 <= theNumber && theNumber < 90)
+												{
+													return "motorcycle";
+												}
+												else
+												{
+													return "bus";
+												}
+											}
+										}
+									}
+									else
+									{
+										//Seventh Time
+										if(timeElapsed < SEVENTH_TIMESHIFT)
+										{
+											if(theNumber < 50)
+											{
+												return "car";
+											}
+											else
+											{
+												if(50 <= theNumber && theNumber < 90)
+												{
+													return "truck";
+												}
+												else
+												{
+													if(90 <= theNumber && theNumber < 95)
+													{
+														return "motorcycle";
+													}
+													else
+													{
+														return "bus";
+													}
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}	
+			//
+			function determineAmount()
+			{	
+				//ALTERED AMOUNT 
+				if(timeElapsed < FIRST_TIMESHIFT)
+				{
+					return 1;
+				}
+				else
+				{
+					if(timeElapsed < SECOND_TIMESHIFT)
+					{
+						return 5;
+					}
+					else
+					{
+						if(timeElapsed < THIRD_TIMESHIFT)
+						{
+							return 3;
+						}
+						else
+						{
+							if(timeElapsed < FOURTH_TIMESHIFT)
+							{
+								return 4;
+							}
+							else
+							{
+								if(timeElapsed < FIFTH_TIMESHIFT)
+								{
+									return 7;
+								}
+								else
+								{
+									if(timeElapsed < SIXTH_TIMESHIFT)
+									{
+										return 3;
+									}
+									else
+									{
+										if(timeElapsed < SEVENTH_TIMESHIFT)
+										{
+											return 2;
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			
+			function revealSimulation()
+			{
+				tollTable.style.display = "table";
+				priceTable.style.display = "table";
+				theCDiv.style.display = "block";
+			}
+			
+			function revealResult()
+			{
+				//Track the lane vehicles
+				ourLanes = [];
+				for(var i = 0; i < LANE_SIZE; i++)
+				{
+					ourLanes[i] = [];
+				}
+				display();
+				//Hides all the other information
+				tollTable.style.display = "none";
+				priceTable.style.display = "none";
+				theCDiv.style.display = "none";
+				//Reveals the result table
+				resultTable.style.display = "table";
+				//Setting the information to the results stored in memory
+				nVeh.innerHTML = "" + numOfVehicles + " vehicles";
+				ntypeOfVehs.innerHTML  = "<b> Cars: </b>" + numCar + "<b> Buses: </b>" + numBuses + "<b> Trucks: </b>" + numTruck + "<b> Motorcycle: </b>" + numMotorcycle;
+				nTruck.innerHTML = " <b> 2: </b> " + twoTruck + "<b>  3: </b> " + threeTruck + "<b>  4: </b> " + fourTruck + "<b>  5: </b> " + fiveTruck;
+				nResid.innerHTML = "" + numResidents + " residents";
+				nezPassCustomers.innerHTML = "" + numPass + " customers";
+				ncashCustomers.innerHTML = "" + numCash + " customers";
+				nTotalAmount.innerHTML = "$" + numTotal;
+			}
+			
+			function updateTime()
+			{
+				var theHour = parseInt(timeElapsed / 60);
+				var theMinute = timeElapsed - (theHour * 60);
+				if(theHour % 24 == 0)
+				{
+					timeOfDay = " AM";
+				}
+				else
+				{
+					if(theHour % 12 == 0)
+					{
+						timeOfDay = " PM";
+					}
+				}
+				theRealHour = theHour % 12;
+				if(theRealHour == 0)
+				{
+					theRealHour = 12;
+				}
+				if(theMinute < 10)
+				{
+					theMinute = "0" + theMinute;
+				}
+				theTimers.innerHTML =  "" + theRealHour + ":" + theMinute + " " + timeOfDay;
+			}
+			
+			function display()
+			{
+				//Removes all added vehicles
+				for(var vehicle = 0; vehicle < theVehicles.length; vehicle++)
+				{
+					theLanes[theVehicles[vehicle][1]].removeChild(theVehicles[vehicle][0]);
+				}
+				theVehicles = [];
+				//Readds the ones in another list
+				for(var lLane = 0; lLane < ourLanes.length; lLane++)
+				{
+					for(var vehicle = 0; vehicle < ourLanes[lLane].length; vehicle++)
+					{
+						theLanes[lLane].appendChild(ourLanes[lLane][vehicle].vehicleIMG);
+						theVehicles.push([ourLanes[lLane][vehicle].vehicleIMG, lLane]);
+					}
+				}
+			}
+			
+		</script>
+	</head>
+	
+	<body onload = "initialize();">
+		
+		<table id = "menu"> 
+			<tr>
+				<td> <img src = "images/car.jpg" class = "bimg" /> </td>
+				<td id = "box"> <span> Toll Plaza Simulation </span> </td>
+				<td> <img src = "images/car.jpg" class = "bimg" /> </td>
+			</tr>
+		</table>
+		
+		<hr />
+			<div>
+				<span class = "theFont"> Press the button to start a normal simulation of a pay toll station's daily activities! <br /> </span>
+				<button onclick = "runSimulation();" id = "startButton"> Start </button>
+			</div>
+		<hr />
+		
+		<table id = "tolllanes">
+			<tr>
+				<td colspan = "2"> <span class = "theFont"> Toll Plaza </span> </td>
+			</tr>
+			<tr>
+				<td class = "tleft"> <span class = "theFont"> Lane Number </span> </td>
+				<td> <span class = "theFont"> In Lane </span> </td>
+			</tr> 
+			<tr> 
+				<td class = "tleft"> Lane 1 </td>
+				<td class = "lanes"> </td>
+			</tr>
+			<tr> 
+				<td class = "tleft"> Lane 2 </td>
+				<td class = "lanes"> </td>
+			</tr>
+			<tr> 
+				<td class = "tleft"> Lane 3 </td>
+				<td class = "lanes"> </td>
+			</tr>
+			<tr> 
+				<td class = "tleft"> Lane 4 </td>
+				<td class = "lanes"> </td>
+			</tr>
+			<tr> 
+				<td class = "tleft"> Lane 5 </td>
+				<td class = "lanes"> </td>
+			</tr>
+			<tr> 
+				<td class = "tleft"> Lane 6 </td>
+				<td class = "lanes"> </td>
+			</tr>
+			<tr> 
+				<td class = "tleft"> Lane 7 </td>
+				<td class = "lanes"> </td>
+			</tr>
+			<tr> 
+				<td class = "tleft"> Lane 8 </td>
+				<td class = "lanes"> </td>
+			</tr>
+		</table>
+		
+		<div id = "tright" width = "15%">
+			<img src = "images/clock.png" width = "10%"/> <br />
+			<span class = "theFont"> Time of Day: </span> <br />
+			<span id = "theTime"> 12:00 AM </span>
+		</div>
+		
+		<br /> <br /> 
+		
+		<table id = "price" width = "25%">
+			<tr>
+				<td colspan = "2"> <span class = "theFont"> Toll Prices for Vehicles </span> </td>
+			</tr>
+			<tr>
+				<td> <span class = "theFont"> Type of Vehicle </span> </td>
+				<td> <span class = "theFont"> Cost </span> </td>
+			</tr>
+			<tr>
+				<td> Car </td>
+				<td> $8 </td>
+			</tr>
+			<tr> 
+				<td> Motorcycle </td>
+				<td> $6 </td>
+			</tr>
+			<tr>
+				<td> Bus </td>
+				<td> Free </td>
+			</tr>
+			<tr> 
+				<td> Truck </td>
+				<td> $4 per axle </td>
+			</tr>
+		</table>
+		
+		<table id = "result" width = "50%">
+			<tr>
+				<td colspan = "2"> <span class = "theFont"> Results for the Day: </span> </td>
+			</tr>
+			<tr> 
+				<td> Number of Vehicles </td>
+				<td id = "numOfVeh"> 0 </td>
+			</tr>
+			<tr>
+				<td> Type of Vehicles </td>
+				<td id = "tVeh"> Car: 0 Buses: 0 Trucks: 0 Motorcycle: 0 </td>
+			</tr>
+			<tr>
+				<td> Trucks (By axles) </td>
+				<td id = "atruck"> 2: 0 3: 0 4: 0 5: 0 </td>
+			</tr>
+			<tr>
+				<td> Residential Customers </td>
+				<td id = "residents"> 0 </td>
+			</tr>
+			<tr>
+				<td> Ez Pass Customers </td>
+				<td id = "epasscust"> 0 </td>
+			</tr>
+			<tr>
+				<td> Cash Customers </td>
+				<td id = "ccust"> 0 </td>
+			</tr>
+			<tr>
+				<td> Total money collected with tolls </td>
+				<td id = "totalAmount"> $0 </td>
+			</tr>
+		</table>
+		
+	</body>
+	
+</html>
+
